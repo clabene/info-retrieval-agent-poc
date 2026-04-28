@@ -139,6 +139,6 @@ def run_ingestion_pipeline(documents: list[Document]) -> int:
         vector_store=vector_store,
     )
 
-    nodes = pipeline.run(documents=documents, show_progress=True)
+    nodes = pipeline.run(documents=documents, show_progress=True, num_workers=1)
     logger.info("Ingested %d chunks into Qdrant.", len(nodes))
     return len(nodes)

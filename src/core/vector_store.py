@@ -33,7 +33,7 @@ def ensure_collection() -> None:
     client.create_collection(
         collection_name=COLLECTION_NAME,
         vectors_config=VectorParams(size=settings.embed_dims, distance=Distance.COSINE),
-        sparse_vectors_config={"text": SparseVectorParams()},
+        sparse_vectors_config={"text-sparse-new": SparseVectorParams()},
     )
 
     # Create payload indexes for efficient metadata filtering

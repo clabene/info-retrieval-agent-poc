@@ -55,4 +55,5 @@ def get_vector_store() -> QdrantVectorStore:
         aclient=aclient,
         enable_hybrid=True,
         fastembed_sparse_model="Qdrant/bm25",
+        batch_size=20,
     )

@@ -18,6 +18,7 @@ dependencies = [
     "trafilatura",
     "fastembed",
     "llama-index-embeddings-huggingface",
+    "llama-index-readers-file",
 ]
 
 [project.optional-dependencies]
