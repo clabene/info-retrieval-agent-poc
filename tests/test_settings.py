@@ -18,9 +18,15 @@ class TestSettings:
     def test_defaults_are_correct(self, monkeypatch):
         """All defaults resolve correctly when only OPENAI_API_KEY is set."""
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test-key-123")
+        # Clear any local .env interference
+        monkeypatch.delenv("LLM_PROVIDER", raising=False)
+        monkeypatch.delenv("ZEN_API_KEY", raising=False)
+        monkeypatch.delenv("EMBED_PROVIDER", raising=False)
+        monkeypatch.delenv("EMBED_MODEL", raising=False)
+        monkeypatch.delenv("EMBED_DIMS", raising=False)
         from src.config.settings import Settings
 
-        s = Settings()
+        s = Settings(_env_file=None)
         assert s.llm_provider == "openai"
         assert s.llm_model == "gpt-4o-mini"
         assert s.embed_provider == "openai"
@@ -28,6 +34,7 @@ class TestSettings:
         assert s.embed_dims == 1536
         assert s.qdrant_host == "localhost"
         assert s.qdrant_port == 6333
+        assert s.zen_api_key == ""
 
     def test_missing_openai_key_raises_when_provider_is_openai(self, monkeypatch):
         """Missing OPENAI_API_KEY raises ValidationError when provider needs it."""

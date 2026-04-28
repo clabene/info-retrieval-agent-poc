@@ -2,11 +2,12 @@
 
 import logging
 
+from llama_index.core import Settings as LlamaSettings
 from llama_index.core import VectorStoreIndex
 from llama_index.core.agent.workflow import FunctionAgent
 from llama_index.core.tools import QueryEngineTool
 
-from src.config.providers import get_llm, get_vector_store
+from src.config.providers import get_embed_model, get_llm, get_vector_store
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,13 @@ def build_query_engine_tool() -> QueryEngineTool:
         QueryEngineTool configured with similarity_top_k=5, sparse_top_k=12, hybrid mode.
     """
     vector_store = get_vector_store()
+
+    # Set LlamaIndex global settings to prevent it from defaulting to OpenAI
+    embed_model = get_embed_model()
+    llm = get_llm()
+    LlamaSettings.embed_model = embed_model
+    LlamaSettings.llm = llm
+
     index = VectorStoreIndex.from_vector_store(vector_store)
     query_engine = index.as_query_engine(
         similarity_top_k=5,

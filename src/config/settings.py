@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY is required when using OpenAI for LLM or embeddings.
     """
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
     openai_api_key: str = ""
     zen_api_key: str = ""

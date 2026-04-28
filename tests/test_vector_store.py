@@ -23,6 +23,7 @@ class TestEnsureCollection:
     def test_creates_collection_when_not_exists(self, mock_client_cls, monkeypatch):
         """Collection is created with correct params when it doesn't exist."""
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        monkeypatch.setenv("EMBED_DIMS", "1536")
         mock_client = MagicMock()
         mock_client.collection_exists.return_value = False
         mock_client_cls.return_value = mock_client
