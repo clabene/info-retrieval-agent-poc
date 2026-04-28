@@ -1,0 +1,4 @@
+# URLs to ingest (one per line)
+# Example:
+# https://docs.example.com/page1
+# https://docs.example.com/page2

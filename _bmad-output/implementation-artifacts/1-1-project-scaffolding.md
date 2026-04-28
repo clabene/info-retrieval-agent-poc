@@ -1,6 +1,6 @@
 # Story 1.1: Project Scaffolding
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -20,28 +20,28 @@ so that I have a clean foundation to build features on.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Initialize project with uv (AC: #1, #2, #5)
-  - [ ] Run `uv init` in project root
-  - [ ] Configure `pyproject.toml` with project metadata (name=info-retrieval-agent, python>=3.10,<4.0)
-  - [ ] Add all required dependencies to `pyproject.toml` (see Dev Notes for complete list)
-  - [ ] Run `uv sync` and verify all dependencies install without errors
-- [ ] Task 2: Create directory structure (AC: #1, #6, #7)
-  - [ ] Create `src/__init__.py`
-  - [ ] Create `src/config/__init__.py`
-  - [ ] Create `src/core/__init__.py`
-  - [ ] Create `src/api/__init__.py`
-  - [ ] Create empty `main.py` with `if __name__ == "__main__": pass` placeholder
-  - [ ] Create empty `ingest.py` with `if __name__ == "__main__": pass` placeholder
-  - [ ] Create `data/pdfs/` directory with `.gitkeep`
-  - [ ] Create `data/urls.txt` with a comment line explaining format (one URL per line)
-- [ ] Task 3: Configure ruff and .gitignore (AC: #3, #4)
-  - [ ] Add `[tool.ruff]` section to `pyproject.toml` with line-length=120, target-version="py312"
-  - [ ] Add `[tool.ruff.lint]` with select=["E", "F", "I"] (errors, pyflakes, isort)
-  - [ ] Add `[tool.ruff.format]` with quote-style="double"
-  - [ ] Create `.gitignore` with: `.env`, `__pycache__/`, `.venv/`, `data/pdfs/*.pdf`, `*.pyc`, `.ruff_cache/`
-  - [ ] Run `uv run ruff check .` and `uv run ruff format .` to verify ruff works
-- [ ] Task 4: Create .env.example (AC: #2)
-  - [ ] Create `.env.example` documenting all env vars with comments:
+- [x] Task 1: Initialize project with uv (AC: #1, #2, #5)
+  - [x] Run `uv init` in project root
+  - [x] Configure `pyproject.toml` with project metadata (name=info-retrieval-agent, python>=3.10,<4.0)
+  - [x] Add all required dependencies to `pyproject.toml` (see Dev Notes for complete list)
+  - [x] Run `uv sync` and verify all dependencies install without errors
+- [x] Task 2: Create directory structure (AC: #1, #6, #7)
+  - [x] Create `src/__init__.py`
+  - [x] Create `src/config/__init__.py`
+  - [x] Create `src/core/__init__.py`
+  - [x] Create `src/api/__init__.py`
+  - [x] Create empty `main.py` with `if __name__ == "__main__": pass` placeholder
+  - [x] Create empty `ingest.py` with `if __name__ == "__main__": pass` placeholder
+  - [x] Create `data/pdfs/` directory with `.gitkeep`
+  - [x] Create `data/urls.txt` with a comment line explaining format (one URL per line)
+- [x] Task 3: Configure ruff and .gitignore (AC: #3, #4)
+  - [x] Add `[tool.ruff]` section to `pyproject.toml` with line-length=120, target-version="py312"
+  - [x] Add `[tool.ruff.lint]` with select=["E", "F", "I"] (errors, pyflakes, isort)
+  - [x] Add `[tool.ruff.format]` with quote-style="double"
+  - [x] Create `.gitignore` with: `.env`, `__pycache__/`, `.venv/`, `data/pdfs/*.pdf`, `*.pyc`, `.ruff_cache/`
+  - [x] Run `uv run ruff check .` and `uv run ruff format .` to verify ruff works
+- [x] Task 4: Create .env.example (AC: #2)
+  - [x] Create `.env.example` documenting all env vars with comments:
     - `OPENAI_API_KEY=` (required)
     - `LLM_PROVIDER=openai` (optional, default: openai)
     - `LLM_MODEL=gpt-4o-mini` (optional)
@@ -156,10 +156,36 @@ This story is primarily scaffolding. Verification is:
 
 ### Agent Model Used
 
+Claude Sonnet 4 (via pi coding agent)
+
 ### Debug Log References
+
+- ruff initially scanned `.pi/` and `.opencode/` directories — fixed by adding `extend-exclude` to `[tool.ruff]`
 
 ### Completion Notes List
 
+- Project scaffolded with `uv init`, all 12 core dependencies + 4 dev dependencies defined
+- 3-layer directory structure created (config/core/api) with __init__.py files
+- ruff configured and passing (check + format)
+- .env.example documents all 7 environment variables
+- Empty entry points (main.py, ingest.py) ready for future stories
+- data/ directory with pdfs/.gitkeep and urls.txt placeholder
+
 ### File List
 
+- pyproject.toml (new)
+- .gitignore (new)
+- .env.example (new)
+- main.py (new)
+- ingest.py (new)
+- src/__init__.py (new)
+- src/config/__init__.py (new)
+- src/core/__init__.py (new)
+- src/api/__init__.py (new)
+- tests/__init__.py (new)
+- data/pdfs/.gitkeep (new)
+- data/urls.txt (new)
+
 ### Change Log
+
+- 2026-04-27: Story 1.1 implemented — project scaffolding complete, all ACs satisfied

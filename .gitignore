@@ -1,2 +1,29 @@
-.pi/
-.opencode/
+# Environment
+.env
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Ruff
+.ruff_cache/
+
+# Data (PDFs are user-provided, not committed)
+data/pdfs/*.pdf
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# uv
+.python-version
+
+# Build
+dist/
+*.egg-info/

@@ -1,0 +1,39 @@
+[project]
+name = "info-retrieval-agent"
+version = "0.1.0"
+description = "PoC agentic information-retrieval system backed by Qdrant vector database"
+readme = "README.md"
+requires-python = ">=3.10,<4.0"
+dependencies = [
+    "llama-index-core",
+    "llama-index-llms-openai",
+    "llama-index-embeddings-openai",
+    "llama-index-vector-stores-qdrant",
+    "qdrant-client",
+    "fastapi",
+    "uvicorn[standard]",
+    "gradio",
+    "pydantic-settings",
+    "python-dotenv",
+    "trafilatura",
+    "fastembed",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "httpx",
+    "ruff",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = [".pi", ".opencode", "_bmad", "_bmad-output"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.ruff.format]
+quote-style = "double"
