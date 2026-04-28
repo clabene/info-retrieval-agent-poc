@@ -16,8 +16,10 @@ class Settings(BaseSettings):
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
     openai_api_key: str
+    zen_api_key: str = ""
     llm_provider: str = "openai"
     llm_model: str = "gpt-4o-mini"
+    llm_api_base: str = ""
     embed_provider: str = "openai"
     embed_model: str = "text-embedding-3-small"
     qdrant_host: str = "localhost"

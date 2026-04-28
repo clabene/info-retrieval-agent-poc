@@ -37,6 +37,28 @@ class TestGetLlm:
         with pytest.raises(ValueError, match="Unsupported LLM provider"):
             get_llm()
 
+    def test_zen_provider_returns_openai_with_custom_base(self, monkeypatch):
+        """get_llm() with zen provider returns OpenAI with custom api_base."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test-key")
+        monkeypatch.setenv("ZEN_API_KEY", "zen-key-123")
+        monkeypatch.setenv("LLM_PROVIDER", "zen")
+        monkeypatch.setenv("LLM_MODEL", "gpt-5.4-mini")
+        from src.config.providers import get_llm
+
+        llm = get_llm()
+        assert llm.model == "gpt-5.4-mini"
+        assert llm.api_key == "zen-key-123"
+
+    def test_zen_provider_without_key_raises(self, monkeypatch):
+        """Zen provider without ZEN_API_KEY raises ValueError."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test-key")
+        monkeypatch.setenv("ZEN_API_KEY", "")
+        monkeypatch.setenv("LLM_PROVIDER", "zen")
+        from src.config.providers import get_llm
+
+        with pytest.raises(ValueError, match="ZEN_API_KEY is required"):
+            get_llm()
+
 
 class TestGetEmbedModel:
     """Test get_embed_model() factory function."""

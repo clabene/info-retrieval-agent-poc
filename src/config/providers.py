@@ -11,11 +11,17 @@ from src.config.settings import get_settings
 def get_llm() -> OpenAI:
     """Create LLM instance from settings.
 
-    Currently supports: openai.
+    Supports providers: openai, zen (OpenCode Zen gateway).
     """
     settings = get_settings()
     if settings.llm_provider == "openai":
         return OpenAI(model=settings.llm_model, api_key=settings.openai_api_key)
+    if settings.llm_provider == "zen":
+        api_base = settings.llm_api_base or "https://opencode.ai/zen/v1"
+        api_key = settings.zen_api_key
+        if not api_key:
+            raise ValueError("ZEN_API_KEY is required when LLM_PROVIDER=zen")
+        return OpenAI(model=settings.llm_model, api_key=api_key, api_base=api_base)
     raise ValueError(f"Unsupported LLM provider: {settings.llm_provider}")
 
 
