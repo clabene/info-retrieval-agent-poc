@@ -82,6 +82,26 @@ class TestGetEmbedModel:
         with pytest.raises(ValueError, match="Unsupported embedding provider"):
             get_embed_model()
 
+    @patch("src.config.providers.HuggingFaceEmbedding", create=True)
+    def test_huggingface_provider_returns_embedding(self, mock_hf_cls, monkeypatch):
+        """get_embed_model() with huggingface returns HuggingFaceEmbedding."""
+        monkeypatch.setenv("OPENAI_API_KEY", "")
+        monkeypatch.setenv("LLM_PROVIDER", "zen")
+        monkeypatch.setenv("ZEN_API_KEY", "zen-key")
+        monkeypatch.setenv("EMBED_PROVIDER", "huggingface")
+        monkeypatch.setenv("EMBED_MODEL", "BAAI/bge-small-en-v1.5")
+
+        mock_instance = MagicMock()
+        mock_instance.model_name = "BAAI/bge-small-en-v1.5"
+        mock_hf_cls.return_value = mock_instance
+
+        mock_modules = {"llama_index.embeddings.huggingface": MagicMock(HuggingFaceEmbedding=mock_hf_cls)}
+        with patch.dict("sys.modules", mock_modules):
+            from src.config.providers import get_embed_model
+
+            embed = get_embed_model()
+            assert embed.model_name == "BAAI/bge-small-en-v1.5"
+
 
 class TestGetVectorStore:
     """Test get_vector_store() factory function."""

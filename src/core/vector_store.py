@@ -29,10 +29,10 @@ def ensure_collection() -> None:
         logger.info("Collection '%s' already exists — skipping creation.", COLLECTION_NAME)
         return
 
-    logger.info("Creating collection '%s'...", COLLECTION_NAME)
+    logger.info("Creating collection '%s' (dims=%d)...", COLLECTION_NAME, settings.embed_dims)
     client.create_collection(
         collection_name=COLLECTION_NAME,
-        vectors_config=VectorParams(size=1536, distance=Distance.COSINE),
+        vectors_config=VectorParams(size=settings.embed_dims, distance=Distance.COSINE),
         sparse_vectors_config={"text": SparseVectorParams()},
     )
 

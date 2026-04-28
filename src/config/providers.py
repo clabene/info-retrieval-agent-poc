@@ -25,14 +25,18 @@ def get_llm() -> OpenAI:
     raise ValueError(f"Unsupported LLM provider: {settings.llm_provider}")
 
 
-def get_embed_model() -> OpenAIEmbedding:
+def get_embed_model():
     """Create embedding model instance from settings.
 
-    Currently supports: openai.
+    Supports providers: openai, huggingface.
     """
     settings = get_settings()
     if settings.embed_provider == "openai":
         return OpenAIEmbedding(model=settings.embed_model, api_key=settings.openai_api_key)
+    if settings.embed_provider == "huggingface":
+        from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+
+        return HuggingFaceEmbedding(model_name=settings.embed_model)
     raise ValueError(f"Unsupported embedding provider: {settings.embed_provider}")
 
 

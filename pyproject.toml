@@ -17,6 +17,7 @@ dependencies = [
     "python-dotenv",
     "trafilatura",
     "fastembed",
+    "llama-index-embeddings-huggingface",
 ]
 
 [project.optional-dependencies]
