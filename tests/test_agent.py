@@ -49,12 +49,17 @@ class TestBuildAgent:
 
     @patch("src.core.agent.FunctionAgent")
     @patch("src.core.agent.build_query_engine_tool")
+    @patch("src.core.agent.LlamaSettings")
+    @patch("src.core.agent.get_embed_model")
     @patch("src.core.agent.get_llm")
-    def test_returns_function_agent(self, mock_get_llm, mock_build_tool, mock_agent_cls, monkeypatch):
+    def test_returns_function_agent(
+        self, mock_get_llm, mock_get_embed, mock_settings, mock_build_tool, mock_agent_cls, monkeypatch
+    ):
         """build_agent() constructs a FunctionAgent with correct params."""
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
         mock_llm = MagicMock()
         mock_get_llm.return_value = mock_llm
+        mock_get_embed.return_value = MagicMock()
 
         mock_tool = MagicMock()
         mock_tool.metadata.name = "knowledge_base"

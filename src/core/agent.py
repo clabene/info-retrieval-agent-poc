@@ -47,14 +47,11 @@ def build_query_engine_tool() -> QueryEngineTool:
 
     Returns:
         QueryEngineTool configured with similarity_top_k=5, sparse_top_k=12, hybrid mode.
+
+    Note:
+        Assumes LlamaSettings.embed_model and .llm are already set by build_agent().
     """
     vector_store = get_vector_store()
-
-    # Set LlamaIndex global settings to prevent it from defaulting to OpenAI
-    embed_model = get_embed_model()
-    llm = get_llm()
-    LlamaSettings.embed_model = embed_model
-    LlamaSettings.llm = llm
 
     index = VectorStoreIndex.from_vector_store(vector_store)
     query_engine = index.as_query_engine(
@@ -122,6 +119,11 @@ def build_agent() -> FunctionAgent:
         FunctionAgent configured with GPT-4o-mini and the QueryEngineTool.
     """
     llm = get_llm()
+
+    # Set LlamaIndex global settings once during agent construction
+    LlamaSettings.embed_model = get_embed_model()
+    LlamaSettings.llm = llm
+
     tool = build_query_engine_tool()
 
     agent = FunctionAgent(
