@@ -1,7 +1,6 @@
 """FastAPI application — routes, Gradio mount, lifespan."""
 
 import logging
-import re
 from contextlib import asynccontextmanager
 
 import gradio as gr
@@ -40,8 +39,8 @@ async def query(request: QueryRequest) -> QueryResponse:
         response = await _agent.run(user_msg=request.question)
         response_text = str(response)
 
-        # Extract sources from response (agent cites them in text)
-        sources = _extract_sources(response_text)
+        # Extract sources from agent tool call results (source nodes metadata)
+        sources = _extract_sources_from_tool_calls(response)
 
         return QueryResponse(answer=response_text, sources=sources)
     except Exception as e:
@@ -55,20 +54,43 @@ async def health() -> HealthResponse:
     return HealthResponse(status="healthy")
 
 
-def _extract_sources(response_text: str) -> list[str]:
-    """Extract source references from agent response text.
+def _extract_sources_from_tool_calls(response) -> list[str]:
+    """Extract source references from agent tool call results.
 
-    Looks for filenames (*.pdf) and URLs in the response.
+    Reads source_nodes metadata from QueryEngineTool responses
+    to get file names, page numbers, and URLs.
     """
     sources: list[str] = []
 
-    # Find PDF filenames
-    pdf_matches = re.findall(r"[\w\-./]+\.pdf", response_text)
-    sources.extend(pdf_matches)
+    if not hasattr(response, "tool_calls"):
+        return sources
 
-    # Find URLs
-    url_matches = re.findall(r"https?://[^\s,)\"']+", response_text)
-    sources.extend(url_matches)
+    for tool_call in response.tool_calls:
+        raw_output = getattr(tool_call, "tool_output", None)
+        if raw_output is None:
+            continue
+
+        raw_response = getattr(raw_output, "raw_output", None)
+        if raw_response is None:
+            continue
+
+        source_nodes = getattr(raw_response, "source_nodes", [])
+        for node in source_nodes:
+            metadata = getattr(node, "metadata", {}) if hasattr(node, "metadata") else {}
+            if not metadata:
+                node_obj = getattr(node, "node", None)
+                metadata = getattr(node_obj, "metadata", {}) if node_obj else {}
+
+            file_name = metadata.get("file_name", "")
+            page_label = metadata.get("page_label", "")
+            source_url = metadata.get("source_url", "")
+
+            if source_url:
+                sources.append(source_url)
+            elif file_name and page_label:
+                sources.append(f"{file_name} (p. {page_label})")
+            elif file_name:
+                sources.append(file_name)
 
     return list(dict.fromkeys(sources))  # deduplicate preserving order
 

@@ -41,7 +41,7 @@ class TestEnsureCollection:
         vectors_config = call_kwargs["vectors_config"]
         assert vectors_config.size == 1536
         assert vectors_config.distance == Distance.COSINE
-        assert "text" in call_kwargs["sparse_vectors_config"]
+        assert "text-sparse-new" in call_kwargs["sparse_vectors_config"]
 
     @patch("src.core.vector_store.QdrantClient")
     def test_does_not_recreate_existing_collection(self, mock_client_cls, monkeypatch):

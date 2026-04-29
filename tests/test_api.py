@@ -23,7 +23,22 @@ def client(monkeypatch):
 
     with patch("src.api.app.build_agent") as mock_build:
         mock_agent = MagicMock()
-        mock_agent.run = AsyncMock(return_value="The answer is 42. Source: guide.pdf")
+
+        # Build a realistic mock response with tool_calls containing source_nodes
+        mock_tool_output = MagicMock()
+        mock_source_node = MagicMock()
+        mock_source_node.metadata = {"file_name": "guide.pdf", "page_label": "5", "source_type": "pdf"}
+        mock_source_node.node.metadata = {"file_name": "guide.pdf", "page_label": "5", "source_type": "pdf"}
+        mock_tool_output.raw_output.source_nodes = [mock_source_node]
+
+        mock_tool_call = MagicMock()
+        mock_tool_call.tool_output = mock_tool_output
+
+        mock_response = MagicMock()
+        mock_response.__str__ = lambda self: "The answer is 42. Source: guide.pdf"
+        mock_response.tool_calls = [mock_tool_call]
+
+        mock_agent.run = AsyncMock(return_value=mock_response)
         mock_build.return_value = mock_agent
 
         import src.api.app as app_module
@@ -47,7 +62,7 @@ class TestQueryEndpoint:
         data = response.json()
         assert "answer" in data
         assert "sources" in data
-        assert "guide.pdf" in data["sources"]
+        assert "guide.pdf (p. 5)" in data["sources"]
 
     def test_returns_422_on_missing_question(self, client):
         """POST /query returns 422 when question field is missing."""
@@ -92,26 +107,66 @@ class TestOpenAPIDocs:
 
 
 class TestExtractSources:
-    """Test _extract_sources helper."""
+    """Test _extract_sources_from_tool_calls helper."""
 
-    def test_extracts_pdf_filenames(self):
-        """Extracts .pdf filenames from text."""
-        from src.api.app import _extract_sources
+    def test_extracts_pdf_with_page(self):
+        """Extracts PDF filename with page number from tool calls."""
+        from src.api.app import _extract_sources_from_tool_calls
 
-        result = _extract_sources("Based on guide.pdf and manual.pdf, the answer is...")
-        assert "guide.pdf" in result
-        assert "manual.pdf" in result
+        response = MagicMock()
+        node = MagicMock()
+        node.metadata = {"file_name": "guide.pdf", "page_label": "5", "source_type": "pdf"}
+        tool_output = MagicMock()
+        tool_output.raw_output.source_nodes = [node]
+        tool_call = MagicMock()
+        tool_call.tool_output = tool_output
+        response.tool_calls = [tool_call]
 
-    def test_extracts_urls(self):
-        """Extracts URLs from text."""
-        from src.api.app import _extract_sources
+        result = _extract_sources_from_tool_calls(response)
+        assert "guide.pdf (p. 5)" in result
 
-        result = _extract_sources("See https://example.com/page for details")
+    def test_extracts_web_url(self):
+        """Extracts URL from web source nodes."""
+        from src.api.app import _extract_sources_from_tool_calls
+
+        response = MagicMock()
+        node = MagicMock()
+        node.metadata = {
+            "source_url": "https://example.com/page",
+            "file_name": "https://example.com/page",
+            "source_type": "web",
+        }
+        tool_output = MagicMock()
+        tool_output.raw_output.source_nodes = [node]
+        tool_call = MagicMock()
+        tool_call.tool_output = tool_output
+        response.tool_calls = [tool_call]
+
+        result = _extract_sources_from_tool_calls(response)
         assert "https://example.com/page" in result
 
     def test_deduplicates_sources(self):
         """Removes duplicate sources."""
-        from src.api.app import _extract_sources
+        from src.api.app import _extract_sources_from_tool_calls
 
-        result = _extract_sources("guide.pdf says X. Also guide.pdf says Y.")
-        assert result.count("guide.pdf") == 1
+        response = MagicMock()
+        node1 = MagicMock()
+        node1.metadata = {"file_name": "guide.pdf", "page_label": "5"}
+        node2 = MagicMock()
+        node2.metadata = {"file_name": "guide.pdf", "page_label": "5"}
+        tool_output = MagicMock()
+        tool_output.raw_output.source_nodes = [node1, node2]
+        tool_call = MagicMock()
+        tool_call.tool_output = tool_output
+        response.tool_calls = [tool_call]
+
+        result = _extract_sources_from_tool_calls(response)
+        assert result.count("guide.pdf (p. 5)") == 1
+
+    def test_returns_empty_when_no_tool_calls(self):
+        """Returns empty list when response has no tool_calls."""
+        from src.api.app import _extract_sources_from_tool_calls
+
+        response = MagicMock(spec=[])
+        result = _extract_sources_from_tool_calls(response)
+        assert result == []
