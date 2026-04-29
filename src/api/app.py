@@ -96,23 +96,14 @@ def _extract_sources_from_tool_calls(response) -> list[str]:
 
 
 # Gradio chat interface
-def _chat_fn(message: str, history: list) -> str:
-    """Gradio chat function — bridges sync Gradio to async agent."""
-    import asyncio
-
+async def _chat_fn(message: str, history: list) -> str:
+    """Gradio chat function — async, invokes agent directly."""
     if _agent is None:
         return "Agent not initialized. Please wait for startup to complete."
 
     try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            import concurrent.futures
-
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                result = pool.submit(asyncio.run, _agent.run(user_msg=message)).result()
-        else:
-            result = asyncio.run(_agent.run(user_msg=message))
-        return str(result)
+        response = await _agent.run(user_msg=message)
+        return str(response)
     except Exception as e:
         return f"Error: {e}"
 
