@@ -65,23 +65,31 @@ async def _chat_fn(message: str, history: list) -> str:
         return "Agent not initialized. Please wait for startup to complete."
 
     try:
+        _last_sources.clear()
         response = await _agent.run(user_msg=message)
-        return str(response)
+        answer = str(response)
+
+        # Append deduplicated sources as markdown links
+        sources = list(dict.fromkeys(_last_sources))
+        if sources:
+            answer += "\n\n---\n**Sources:**\n"
+            for src in sources:
+                if src.startswith("http"):
+                    answer += f"- [{src}]({src})\n"
+                else:
+                    answer += f"- {src}\n"
+
+        return answer
     except Exception as e:
         return f"Error: {e}"
 
 
-# JS to hide PWA and Screen Studio sections from Gradio settings
-# Note: Gradio's settings panel is part of its internal frontend shell.
-# When mounted via mount_gradio_app, neither head/js/css on Blocks can target it.
-# These sections are cosmetic — left visible as a known Gradio limitation.
-
-
-with gr.Blocks() as _demo:
+with gr.Blocks(fill_height=True) as _demo:
     gr.ChatInterface(
         fn=_chat_fn,
         title="Knowledge Base Agent",
-        chatbot=gr.Chatbot(buttons=["copy", "copy_all"]),
+        chatbot=gr.Chatbot(buttons=["copy", "copy_all"], height="75vh"),
+        fill_height=True,
     )
 
 app = gr.mount_gradio_app(app, _demo, path="/chat")
