@@ -5,11 +5,15 @@ import logging
 from llama_index.core import Settings as LlamaSettings
 from llama_index.core import VectorStoreIndex
 from llama_index.core.agent.workflow import FunctionAgent
-from llama_index.core.tools import QueryEngineTool
+from llama_index.core.tools import QueryEngineTool, ToolOutput
 
 from src.config.providers import get_embed_model, get_llm, get_vector_store
 
 logger = logging.getLogger(__name__)
+
+# Per-request collector for source nodes produced by tool calls.
+# Populated by the wrapped tool, read + cleared by the /query endpoint.
+_last_sources: list[str] = []
 
 SYSTEM_PROMPT = """\
 You are an information retrieval agent. Your job is to answer questions \
@@ -46,7 +50,7 @@ def build_query_engine_tool() -> QueryEngineTool:
         sparse_top_k=12,
         vector_store_query_mode="hybrid",
     )
-    return QueryEngineTool.from_defaults(
+    tool = QueryEngineTool.from_defaults(
         query_engine=query_engine,
         name="knowledge_base",
         description=(
@@ -55,6 +59,47 @@ def build_query_engine_tool() -> QueryEngineTool:
             "Input should be a natural language question or search query."
         ),
     )
+
+    # Monkey-patch call() to capture source_nodes as a side-effect.
+    # We keep QueryEngineTool (not FunctionTool) so FunctionAgent invokes it.
+    _original_call = tool.call
+
+    def _call_with_source_capture(*args, **kwargs) -> ToolOutput:
+        output = _original_call(*args, **kwargs)
+        _collect_sources(output)
+        return output
+
+    tool.call = _call_with_source_capture  # type: ignore[method-assign]
+
+    # Same for async path
+    _original_acall = tool.acall
+
+    async def _acall_with_source_capture(*args, **kwargs) -> ToolOutput:
+        output = await _original_acall(*args, **kwargs)
+        _collect_sources(output)
+        return output
+
+    tool.acall = _acall_with_source_capture  # type: ignore[method-assign]
+
+    return tool
+
+
+def _collect_sources(tool_output: ToolOutput) -> None:
+    """Extract source metadata from a ToolOutput and append to _last_sources."""
+    raw_response = getattr(tool_output, "raw_output", None)
+    source_nodes = getattr(raw_response, "source_nodes", []) if raw_response else []
+    for sn in source_nodes:
+        node = getattr(sn, "node", sn)
+        meta = getattr(node, "metadata", {})
+        source_url = meta.get("source_url", "")
+        file_name = meta.get("file_name", "")
+        page_label = meta.get("page_label", "")
+        if source_url:
+            _last_sources.append(source_url)
+        elif file_name and page_label:
+            _last_sources.append(f"{file_name} (p. {page_label})")
+        elif file_name:
+            _last_sources.append(file_name)
 
 
 def build_agent() -> FunctionAgent:
@@ -70,6 +115,7 @@ def build_agent() -> FunctionAgent:
         tools=[tool],
         llm=llm,
         system_prompt=SYSTEM_PROMPT,
+        initial_tool_choice="required",
     )
 
     logger.info("Agent built with tool: %s", tool.metadata.name)

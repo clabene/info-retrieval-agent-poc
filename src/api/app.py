@@ -7,7 +7,7 @@ import gradio as gr
 from fastapi import FastAPI, HTTPException
 
 from src.api.models import HealthResponse, QueryRequest, QueryResponse
-from src.core.agent import build_agent
+from src.core.agent import _last_sources, build_agent
 
 logger = logging.getLogger(__name__)
 
@@ -36,11 +36,12 @@ async def query(request: QueryRequest) -> QueryResponse:
         raise HTTPException(status_code=503, detail="Agent not initialized")
 
     try:
+        _last_sources.clear()
         response = await _agent.run(user_msg=request.question)
         response_text = str(response)
 
-        # Extract sources from agent tool call results (source nodes metadata)
-        sources = _extract_sources_from_tool_calls(response)
+        # Deduplicate sources captured by the tool wrapper, preserving order
+        sources = list(dict.fromkeys(_last_sources))
 
         return QueryResponse(answer=response_text, sources=sources)
     except Exception as e:
@@ -52,47 +53,6 @@ async def query(request: QueryRequest) -> QueryResponse:
 async def health() -> HealthResponse:
     """Health check endpoint."""
     return HealthResponse(status="healthy")
-
-
-def _extract_sources_from_tool_calls(response) -> list[str]:
-    """Extract source references from agent tool call results.
-
-    Reads source_nodes metadata from QueryEngineTool responses
-    to get file names, page numbers, and URLs.
-    """
-    sources: list[str] = []
-
-    if not hasattr(response, "tool_calls"):
-        return sources
-
-    for tool_call in response.tool_calls:
-        raw_output = getattr(tool_call, "tool_output", None)
-        if raw_output is None:
-            continue
-
-        raw_response = getattr(raw_output, "raw_output", None)
-        if raw_response is None:
-            continue
-
-        source_nodes = getattr(raw_response, "source_nodes", [])
-        for node in source_nodes:
-            metadata = getattr(node, "metadata", {}) if hasattr(node, "metadata") else {}
-            if not metadata:
-                node_obj = getattr(node, "node", None)
-                metadata = getattr(node_obj, "metadata", {}) if node_obj else {}
-
-            file_name = metadata.get("file_name", "")
-            page_label = metadata.get("page_label", "")
-            source_url = metadata.get("source_url", "")
-
-            if source_url:
-                sources.append(source_url)
-            elif file_name and page_label:
-                sources.append(f"{file_name} (p. {page_label})")
-            elif file_name:
-                sources.append(file_name)
-
-    return list(dict.fromkeys(sources))  # deduplicate preserving order
 
 
 # Gradio chat interface

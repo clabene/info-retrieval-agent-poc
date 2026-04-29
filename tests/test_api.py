@@ -24,21 +24,18 @@ def client(monkeypatch):
     with patch("src.api.app.build_agent") as mock_build:
         mock_agent = MagicMock()
 
-        # Build a realistic mock response with tool_calls containing source_nodes
-        mock_tool_output = MagicMock()
-        mock_source_node = MagicMock()
-        mock_source_node.metadata = {"file_name": "guide.pdf", "page_label": "5", "source_type": "pdf"}
-        mock_source_node.node.metadata = {"file_name": "guide.pdf", "page_label": "5", "source_type": "pdf"}
-        mock_tool_output.raw_output.source_nodes = [mock_source_node]
-
-        mock_tool_call = MagicMock()
-        mock_tool_call.tool_output = mock_tool_output
-
         mock_response = MagicMock()
         mock_response.__str__ = lambda self: "The answer is 42. Source: guide.pdf"
-        mock_response.tool_calls = [mock_tool_call]
+        mock_response.tool_calls = []
 
-        mock_agent.run = AsyncMock(return_value=mock_response)
+        # Simulate the tool wrapper populating _last_sources during agent.run()
+        def _fake_run(**kwargs):
+            from src.core.agent import _last_sources
+            _last_sources.clear()
+            _last_sources.append("guide.pdf (p. 5)")
+            return mock_response
+
+        mock_agent.run = AsyncMock(side_effect=_fake_run)
         mock_build.return_value = mock_agent
 
         import src.api.app as app_module
@@ -106,67 +103,36 @@ class TestOpenAPIDocs:
         assert response.status_code == 200
 
 
-class TestExtractSources:
-    """Test _extract_sources_from_tool_calls helper."""
+class TestSourceCapture:
+    """Test source capture via _last_sources side-effect."""
 
-    def test_extracts_pdf_with_page(self):
-        """Extracts PDF filename with page number from tool calls."""
-        from src.api.app import _extract_sources_from_tool_calls
+    def test_last_sources_populated_by_tool_wrapper(self):
+        """The tool wrapper appends source URLs to _last_sources."""
+        from src.core.agent import _last_sources
 
-        response = MagicMock()
-        node = MagicMock()
-        node.metadata = {"file_name": "guide.pdf", "page_label": "5", "source_type": "pdf"}
-        tool_output = MagicMock()
-        tool_output.raw_output.source_nodes = [node]
-        tool_call = MagicMock()
-        tool_call.tool_output = tool_output
-        response.tool_calls = [tool_call]
+        _last_sources.clear()
+        _last_sources.append("https://example.com/article")
+        _last_sources.append("guide.pdf (p. 5)")
 
-        result = _extract_sources_from_tool_calls(response)
-        assert "guide.pdf (p. 5)" in result
-
-    def test_extracts_web_url(self):
-        """Extracts URL from web source nodes."""
-        from src.api.app import _extract_sources_from_tool_calls
-
-        response = MagicMock()
-        node = MagicMock()
-        node.metadata = {
-            "source_url": "https://example.com/page",
-            "file_name": "https://example.com/page",
-            "source_type": "web",
-        }
-        tool_output = MagicMock()
-        tool_output.raw_output.source_nodes = [node]
-        tool_call = MagicMock()
-        tool_call.tool_output = tool_output
-        response.tool_calls = [tool_call]
-
-        result = _extract_sources_from_tool_calls(response)
-        assert "https://example.com/page" in result
+        assert "https://example.com/article" in _last_sources
+        assert "guide.pdf (p. 5)" in _last_sources
+        _last_sources.clear()
 
     def test_deduplicates_sources(self):
-        """Removes duplicate sources."""
-        from src.api.app import _extract_sources_from_tool_calls
+        """Deduplication via dict.fromkeys preserves order and removes duplicates."""
+        from src.core.agent import _last_sources
 
-        response = MagicMock()
-        node1 = MagicMock()
-        node1.metadata = {"file_name": "guide.pdf", "page_label": "5"}
-        node2 = MagicMock()
-        node2.metadata = {"file_name": "guide.pdf", "page_label": "5"}
-        tool_output = MagicMock()
-        tool_output.raw_output.source_nodes = [node1, node2]
-        tool_call = MagicMock()
-        tool_call.tool_output = tool_output
-        response.tool_calls = [tool_call]
+        _last_sources.clear()
+        _last_sources.extend(["a.pdf", "b.pdf", "a.pdf", "c.pdf", "b.pdf"])
 
-        result = _extract_sources_from_tool_calls(response)
-        assert result.count("guide.pdf (p. 5)") == 1
+        result = list(dict.fromkeys(_last_sources))
+        assert result == ["a.pdf", "b.pdf", "c.pdf"]
+        _last_sources.clear()
 
-    def test_returns_empty_when_no_tool_calls(self):
-        """Returns empty list when response has no tool_calls."""
-        from src.api.app import _extract_sources_from_tool_calls
+    def test_clear_before_query(self):
+        """_last_sources is cleared before each query."""
+        from src.core.agent import _last_sources
 
-        response = MagicMock(spec=[])
-        result = _extract_sources_from_tool_calls(response)
-        assert result == []
+        _last_sources.append("stale.pdf")
+        _last_sources.clear()
+        assert len(_last_sources) == 0
