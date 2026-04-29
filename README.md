@@ -152,12 +152,69 @@ uv run python main.py
 # Run ingestion locally
 uv run python ingest.py
 
-# Run tests
-uv run pytest tests/
-
 # Lint & format
 uv run ruff check .
 uv run ruff format .
+```
+
+## Testing
+
+The project has three test layers:
+
+### Unit Tests
+
+Fast, fully mocked, no infrastructure required:
+
+```bash
+uv run pytest tests/ --ignore=tests/e2e --ignore=tests/playwright
+```
+
+Covers: settings validation, provider factories, ingestion logic, agent construction, API routes, source capture.
+
+### Integration / E2E Tests (Python)
+
+Requires **Qdrant running** on `localhost:6333` and a valid **LLM API key** in `.env`:
+
+```bash
+uv run pytest tests/e2e/ -v
+```
+
+Covers:
+- PMC article fetching (Europe PMC + NCBI efetch fallback)
+- URL pattern detection and parsing
+- Full ingestion pipeline (fetch → chunk → store)
+- `/query` endpoint with real agent (answer quality, source attribution)
+
+Tests auto-skip gracefully when infrastructure is unavailable.
+
+### Playwright Tests (Browser UI)
+
+Requires the **app running** on `localhost:8000` (e.g., via `docker compose up`):
+
+```bash
+cd tests/playwright
+npm install
+npx playwright install chromium  # first time only
+npx playwright test
+```
+
+Covers:
+- Page loads correctly (title, input, submit button)
+- Chat fills full viewport height
+- Submitting a question returns a substantive answer
+- Response includes clickable source links (PMC URLs)
+- Sources section has a visual separator
+- Textarea clears after submission
+- Health API endpoint responds
+
+### Running All Tests
+
+```bash
+# Unit + E2E (Python)
+uv run pytest tests/ -v
+
+# Playwright (separate — needs running app)
+cd tests/playwright && npx playwright test
 ```
 
 ## Project Structure
