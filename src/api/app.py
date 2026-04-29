@@ -108,5 +108,17 @@ async def _chat_fn(message: str, history: list) -> str:
         return f"Error: {e}"
 
 
-_demo = gr.ChatInterface(fn=_chat_fn, title="Knowledge Base Agent")
+# JS to hide PWA and Screen Studio sections from Gradio settings
+# Note: Gradio's settings panel is part of its internal frontend shell.
+# When mounted via mount_gradio_app, neither head/js/css on Blocks can target it.
+# These sections are cosmetic — left visible as a known Gradio limitation.
+
+
+with gr.Blocks() as _demo:
+    gr.ChatInterface(
+        fn=_chat_fn,
+        title="Knowledge Base Agent",
+        chatbot=gr.Chatbot(buttons=["copy", "copy_all"]),
+    )
+
 app = gr.mount_gradio_app(app, _demo, path="/chat")
