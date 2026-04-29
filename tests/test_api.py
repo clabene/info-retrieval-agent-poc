@@ -81,7 +81,9 @@ class TestQueryEndpoint:
 
         response = client.post("/query", json={"question": "test"})
         assert response.status_code == 500
-        assert "Qdrant unreachable" in response.json()["detail"]
+        assert response.json()["detail"] == "An internal error occurred. Please try again later."
+        # Ensure internal details are NOT leaked
+        assert "Qdrant unreachable" not in response.json()["detail"]
 
 
 class TestHealthEndpoint:

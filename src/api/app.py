@@ -45,8 +45,8 @@ async def query(request: QueryRequest) -> QueryResponse:
 
         return QueryResponse(answer=response_text, sources=sources)
     except Exception as e:
-        logger.error("Agent error: %s", e)
-        raise HTTPException(status_code=500, detail=f"Agent error: {e}") from e
+        logger.error("Agent error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal error occurred. Please try again later.") from e
 
 
 @app.get("/health", response_model=HealthResponse)
