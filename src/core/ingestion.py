@@ -88,6 +88,8 @@ def _fetch_pmc_text(pmcid: str) -> str | None:
             if len(full) > 200:
                 logger.debug("Fetched %s via Europe PMC (%d chars)", pmcid, len(full))
                 return full
+    except ET.ParseError as e:
+        logger.warning("Europe PMC returned malformed XML for %s: %s", pmcid, e)
     except Exception as e:
         logger.debug("Europe PMC failed for %s: %s", pmcid, e)
 
@@ -106,6 +108,8 @@ def _fetch_pmc_text(pmcid: str) -> str | None:
             if len(full) > 100:
                 logger.debug("Fetched %s via NCBI efetch (%d chars)", pmcid, len(full))
                 return full
+    except ET.ParseError as e:
+        logger.warning("NCBI efetch returned malformed XML for %s: %s", pmcid, e)
     except Exception as e:
         logger.debug("NCBI efetch failed for %s: %s", pmcid, e)
 

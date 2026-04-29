@@ -156,6 +156,24 @@ class TestLoadWebDocuments:
         assert result == []
 
 
+class TestFetchPmcText:
+    """Test _fetch_pmc_text XML error handling."""
+
+    @patch("requests.get")
+    def test_handles_malformed_xml_from_europe_pmc(self, mock_get):
+        """Returns None and logs warning when Europe PMC returns invalid XML."""
+        from src.core.ingestion import _fetch_pmc_text
+
+        # Europe PMC returns malformed XML, efetch also fails
+        bad_response = MagicMock()
+        bad_response.status_code = 200
+        bad_response.text = "<broken><xml>not closed"
+        mock_get.return_value = bad_response
+
+        result = _fetch_pmc_text("PMC9999999")
+        assert result is None
+
+
 class TestRunIngestionPipeline:
     """Test run_ingestion_pipeline() function."""
 
