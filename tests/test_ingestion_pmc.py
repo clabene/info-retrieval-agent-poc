@@ -161,7 +161,9 @@ class TestFetchGenericURL:
         result = _fetch_generic_url("https://example.com/article")
 
         assert result == "Extracted page content with useful info"
-        mock_traf.fetch_url.assert_called_once_with("https://example.com/article")
+        mock_traf.fetch_url.assert_called_once()
+        call_args = mock_traf.fetch_url.call_args
+        assert call_args[0][0] == "https://example.com/article"
 
     @patch("src.core.ingestion.trafilatura")
     def test_fetch_returns_none(self, mock_traf):

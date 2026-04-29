@@ -36,7 +36,7 @@ def get_embed_model():
     if settings.embed_provider == "huggingface":
         from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
-        return HuggingFaceEmbedding(model_name=settings.embed_model)
+        return HuggingFaceEmbedding(model_name=settings.embed_model, show_progress_bar=True)
     raise ValueError(f"Unsupported embedding provider: {settings.embed_provider}")
 
 

@@ -15,6 +15,16 @@ def _clear_settings_cache():
     get_settings.cache_clear()
 
 
+@pytest.fixture(autouse=True)
+def _reset_sources():
+    """Reset per-request sources before/after each test."""
+    from src.core.agent import init_sources
+
+    init_sources()
+    yield
+    init_sources()
+
+
 class TestChatFunction:
     """Test the Gradio _chat_fn() handler."""
 
@@ -43,14 +53,12 @@ class TestChatFunction:
     async def test_returns_answer_from_agent(self):
         """Returns agent response as string."""
         import src.api.app as app_module
-        from src.core.agent import _last_sources
 
         mock_agent = MagicMock()
         mock_agent.run = AsyncMock(return_value="This is the answer about hydration.")
 
         original = app_module._agent
         app_module._agent = mock_agent
-        _last_sources.clear()
         try:
             result = await app_module._chat_fn("how important is hydration?", [])
             assert "This is the answer about hydration." in result
@@ -61,18 +69,17 @@ class TestChatFunction:
     async def test_appends_url_sources_as_markdown_links(self):
         """URL sources are formatted as markdown links."""
         import src.api.app as app_module
-        from src.core.agent import _last_sources
+        from src.core.agent import get_last_sources
 
         mock_agent = MagicMock()
         mock_agent.run = AsyncMock(return_value="Answer text.")
 
         original = app_module._agent
         app_module._agent = mock_agent
-        _last_sources.clear()
 
         # Simulate sources being added during agent run
         async def fake_run(**kwargs):
-            _last_sources.append("https://pmc.ncbi.nlm.nih.gov/articles/PMC123/")
+            get_last_sources().append("https://pmc.ncbi.nlm.nih.gov/articles/PMC123/")
             return "Answer text."
 
         mock_agent.run = fake_run
@@ -84,25 +91,23 @@ class TestChatFunction:
             assert "(https://pmc.ncbi.nlm.nih.gov/articles/PMC123/)" in result
         finally:
             app_module._agent = original
-            _last_sources.clear()
 
     @pytest.mark.asyncio
     async def test_appends_non_url_sources_as_plain_text(self):
         """Non-URL sources (file names) are listed without link formatting."""
         import src.api.app as app_module
-        from src.core.agent import _last_sources
+        from src.core.agent import get_last_sources
 
         mock_agent = MagicMock()
 
         async def fake_run(**kwargs):
-            _last_sources.append("paper.pdf (p. 5)")
+            get_last_sources().append("paper.pdf (p. 5)")
             return "Answer about paper."
 
         mock_agent.run = fake_run
 
         original = app_module._agent
         app_module._agent = mock_agent
-        _last_sources.clear()
         try:
             result = await app_module._chat_fn("question about paper", [])
             assert "Sources:" in result
@@ -111,18 +116,17 @@ class TestChatFunction:
             assert "[paper.pdf" not in result
         finally:
             app_module._agent = original
-            _last_sources.clear()
 
     @pytest.mark.asyncio
     async def test_deduplicates_sources(self):
         """Duplicate sources are deduplicated."""
         import src.api.app as app_module
-        from src.core.agent import _last_sources
+        from src.core.agent import get_last_sources
 
         async def fake_run(**kwargs):
-            _last_sources.append("https://example.com/doc1")
-            _last_sources.append("https://example.com/doc1")
-            _last_sources.append("https://example.com/doc2")
+            get_last_sources().append("https://example.com/doc1")
+            get_last_sources().append("https://example.com/doc1")
+            get_last_sources().append("https://example.com/doc2")
             return "Answer."
 
         mock_agent = MagicMock()
@@ -130,7 +134,6 @@ class TestChatFunction:
 
         original = app_module._agent
         app_module._agent = mock_agent
-        _last_sources.clear()
         try:
             result = await app_module._chat_fn("test", [])
             # doc1 should appear only once
@@ -138,7 +141,6 @@ class TestChatFunction:
             assert result.count("example.com/doc2") == 2
         finally:
             app_module._agent = original
-            _last_sources.clear()
 
     @pytest.mark.asyncio
     async def test_error_returns_error_string(self):
@@ -161,14 +163,12 @@ class TestChatFunction:
     async def test_no_sources_omits_sources_section(self):
         """When no sources are captured, the Sources section is omitted."""
         import src.api.app as app_module
-        from src.core.agent import _last_sources
 
         mock_agent = MagicMock()
         mock_agent.run = AsyncMock(return_value="Simple answer.")
 
         original = app_module._agent
         app_module._agent = mock_agent
-        _last_sources.clear()
         try:
             result = await app_module._chat_fn("test", [])
             assert "Sources:" not in result

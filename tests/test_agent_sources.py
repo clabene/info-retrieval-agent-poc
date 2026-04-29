@@ -17,12 +17,12 @@ def _clear_settings_cache():
 
 @pytest.fixture
 def clear_sources():
-    """Clear the module-level _last_sources before/after each test."""
-    from src.core.agent import _last_sources
+    """Reset the per-request sources list before/after each test."""
+    from src.core.agent import get_last_sources, init_sources
 
-    _last_sources.clear()
-    yield _last_sources
-    _last_sources.clear()
+    init_sources()
+    yield get_last_sources()
+    init_sources()
 
 
 class TestCollectSources:
