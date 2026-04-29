@@ -28,11 +28,11 @@ def client(monkeypatch):
         mock_response.__str__ = lambda self: "The answer is 42. Source: guide.pdf"
         mock_response.tool_calls = []
 
-        # Simulate the tool wrapper populating _last_sources during agent.run()
+        # Simulate the tool wrapper populating sources during agent.run()
         def _fake_run(**kwargs):
-            from src.core.agent import _last_sources
-            _last_sources.clear()
-            _last_sources.append("guide.pdf (p. 5)")
+            from src.core.agent import init_sources, get_last_sources
+            init_sources()
+            get_last_sources().append("guide.pdf (p. 5)")
             return mock_response
 
         mock_agent.run = AsyncMock(side_effect=_fake_run)
@@ -104,35 +104,35 @@ class TestOpenAPIDocs:
 
 
 class TestSourceCapture:
-    """Test source capture via _last_sources side-effect."""
+    """Test source capture via contextvars side-effect."""
 
-    def test_last_sources_populated_by_tool_wrapper(self):
-        """The tool wrapper appends source URLs to _last_sources."""
-        from src.core.agent import _last_sources
+    def test_sources_populated_by_tool_wrapper(self):
+        """The tool wrapper appends source URLs to per-request sources."""
+        from src.core.agent import get_last_sources, init_sources
 
-        _last_sources.clear()
-        _last_sources.append("https://example.com/article")
-        _last_sources.append("guide.pdf (p. 5)")
+        init_sources()
+        sources = get_last_sources()
+        sources.append("https://example.com/article")
+        sources.append("guide.pdf (p. 5)")
 
-        assert "https://example.com/article" in _last_sources
-        assert "guide.pdf (p. 5)" in _last_sources
-        _last_sources.clear()
+        assert "https://example.com/article" in get_last_sources()
+        assert "guide.pdf (p. 5)" in get_last_sources()
 
     def test_deduplicates_sources(self):
         """Deduplication via dict.fromkeys preserves order and removes duplicates."""
-        from src.core.agent import _last_sources
+        from src.core.agent import get_last_sources, init_sources
 
-        _last_sources.clear()
-        _last_sources.extend(["a.pdf", "b.pdf", "a.pdf", "c.pdf", "b.pdf"])
+        init_sources()
+        get_last_sources().extend(["a.pdf", "b.pdf", "a.pdf", "c.pdf", "b.pdf"])
 
-        result = list(dict.fromkeys(_last_sources))
+        result = list(dict.fromkeys(get_last_sources()))
         assert result == ["a.pdf", "b.pdf", "c.pdf"]
-        _last_sources.clear()
 
-    def test_clear_before_query(self):
-        """_last_sources is cleared before each query."""
-        from src.core.agent import _last_sources
+    def test_init_sources_resets(self):
+        """init_sources creates a fresh list for the current context."""
+        from src.core.agent import get_last_sources, init_sources
 
-        _last_sources.append("stale.pdf")
-        _last_sources.clear()
-        assert len(_last_sources) == 0
+        init_sources()
+        get_last_sources().append("stale.pdf")
+        init_sources()
+        assert len(get_last_sources()) == 0

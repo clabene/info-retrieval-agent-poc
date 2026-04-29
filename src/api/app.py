@@ -7,7 +7,7 @@ import gradio as gr
 from fastapi import FastAPI, HTTPException
 
 from src.api.models import HealthResponse, QueryRequest, QueryResponse
-from src.core.agent import _last_sources, build_agent
+from src.core.agent import build_agent, get_last_sources, init_sources
 
 logger = logging.getLogger(__name__)
 
@@ -36,12 +36,12 @@ async def query(request: QueryRequest) -> QueryResponse:
         raise HTTPException(status_code=503, detail="Agent not initialized")
 
     try:
-        _last_sources.clear()
+        init_sources()
         response = await _agent.run(user_msg=request.question)
         response_text = str(response)
 
         # Deduplicate sources captured by the tool wrapper, preserving order
-        sources = list(dict.fromkeys(_last_sources))
+        sources = list(dict.fromkeys(get_last_sources()))
 
         return QueryResponse(answer=response_text, sources=sources)
     except Exception as e:
@@ -65,12 +65,12 @@ async def _chat_fn(message: str, history: list) -> str:
         return "Agent not initialized. Please wait for startup to complete."
 
     try:
-        _last_sources.clear()
+        init_sources()
         response = await _agent.run(user_msg=message)
         answer = str(response)
 
         # Append deduplicated sources as markdown links
-        sources = list(dict.fromkeys(_last_sources))
+        sources = list(dict.fromkeys(get_last_sources()))
         if sources:
             answer += "\n\n---\n**Sources:**\n"
             for src in sources:

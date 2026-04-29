@@ -1,6 +1,7 @@
 """Agent construction — FunctionAgent with QueryEngineTool for agentic retrieval."""
 
 import logging
+from contextvars import ContextVar
 
 from llama_index.core import Settings as LlamaSettings
 from llama_index.core import VectorStoreIndex
@@ -13,7 +14,18 @@ logger = logging.getLogger(__name__)
 
 # Per-request collector for source nodes produced by tool calls.
 # Populated by the wrapped tool, read + cleared by the /query endpoint.
-_last_sources: list[str] = []
+# Uses ContextVar so concurrent async requests don't leak sources.
+_last_sources_var: ContextVar[list[str]] = ContextVar("last_sources", default=[])
+
+
+def get_last_sources() -> list[str]:
+    """Return the per-request sources list (creates one if needed)."""
+    return _last_sources_var.get()
+
+
+def init_sources() -> None:
+    """Reset the per-request sources list. Call before each agent.run()."""
+    _last_sources_var.set([])
 
 SYSTEM_PROMPT = """\
 You are an information retrieval agent. Your job is to answer questions \
@@ -85,9 +97,10 @@ def build_query_engine_tool() -> QueryEngineTool:
 
 
 def _collect_sources(tool_output: ToolOutput) -> None:
-    """Extract source metadata from a ToolOutput and append to _last_sources."""
+    """Extract source metadata from a ToolOutput and append to per-request sources."""
     raw_response = getattr(tool_output, "raw_output", None)
     source_nodes = getattr(raw_response, "source_nodes", []) if raw_response else []
+    sources = get_last_sources()
     for sn in source_nodes:
         node = getattr(sn, "node", sn)
         meta = getattr(node, "metadata", {})
@@ -95,11 +108,11 @@ def _collect_sources(tool_output: ToolOutput) -> None:
         file_name = meta.get("file_name", "")
         page_label = meta.get("page_label", "")
         if source_url:
-            _last_sources.append(source_url)
+            sources.append(source_url)
         elif file_name and page_label:
-            _last_sources.append(f"{file_name} (p. {page_label})")
+            sources.append(f"{file_name} (p. {page_label})")
         elif file_name:
-            _last_sources.append(file_name)
+            sources.append(file_name)
 
 
 def build_agent() -> FunctionAgent:
