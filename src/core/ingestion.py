@@ -118,7 +118,12 @@ def _fetch_pmc_text(pmcid: str) -> str | None:
 
 def _fetch_generic_url(url: str) -> str | None:
     """Fetch and extract text from a generic (non-PMC) web page via trafilatura."""
-    downloaded = trafilatura.fetch_url(url)
+    from trafilatura.settings import use_config
+
+    config = use_config()
+    config.set("DEFAULT", "DOWNLOAD_TIMEOUT", "15")
+
+    downloaded = trafilatura.fetch_url(url, config=config)
     if not downloaded:
         return None
     return trafilatura.extract(downloaded, include_links=True) or None
