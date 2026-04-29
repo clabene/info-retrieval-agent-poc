@@ -98,6 +98,9 @@ def _extract_sources_from_tool_calls(response) -> list[str]:
 # Gradio chat interface
 async def _chat_fn(message: str, history: list) -> str:
     """Gradio chat function — async, invokes agent directly."""
+    if not message or not message.strip():
+        return ""
+
     if _agent is None:
         return "Agent not initialized. Please wait for startup to complete."
 
